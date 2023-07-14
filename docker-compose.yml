@@ -1,0 +1,13 @@
+services:
+  app:
+    container_name: app
+    build:
+      context: .
+    volumes:
+      - ./:/app
+    networks:
+      - kafka_network
+
+networks:
+  kafka_network:
+    external: true
