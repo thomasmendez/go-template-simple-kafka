@@ -16,15 +16,8 @@ build:
 docker: # @HELP build application and run in docker
 docker:
 	docker build --rm -t kafka-server .
-	docker-compose up --build
+	docker-compose up
 
 kafka-cluster: # @HELP build kafka cluster
 kafka-cluster:
-	docker-compose -f docker-compose-kafka-cluster.yml up --build
-
-app:
-app:
-	docker-compose -f docker-compose.yml --build -f docker-compose-kafka-cluster.yml up --build
-
-dev:
-	docker-compose -f docker-compose-dev.yml up --build
+	docker-compose -f docker-compose-kafka-cluster.yml up

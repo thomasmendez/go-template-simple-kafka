@@ -17,7 +17,19 @@ func main() {
 	topic := "test-topic"
 	groupID := "test-consumer-group"
 
-	// Set up Kafka reader configuration
+	topicConfig := kafka.TopicConfig{
+		Topic:             topic,
+		NumPartitions:     1,
+		ReplicationFactor: 1,
+	}
+
+	kafkaConnection, _ := kafka.Dial("tcp", "172.22.0.1:29092")
+
+	err := kafkaConnection.CreateTopics(topicConfig)
+	if err != nil {
+		fmt.Println("Error creating the topic %w", err)
+	}
+
 	readerConfig := kafka.ReaderConfig{
 		Brokers: brokers,
 		Topic:   topic,
@@ -38,6 +50,7 @@ func main() {
 	writer := kafka.NewWriter(writerConfig)
 	reader := kafka.NewReader(readerConfig)
 
+	defer kafkaConnection.Close()
 	defer reader.Close()
 	defer writer.Close()
 
@@ -47,7 +60,7 @@ func main() {
 		Value: []byte("value"),
 	}
 
-	err := writer.WriteMessages(context.Background(), message)
+	err = writer.WriteMessages(context.Background(), message)
 	if err != nil {
 		fmt.Println("Error writing message:", err)
 	}
@@ -72,15 +85,15 @@ func main() {
 			fmt.Printf("Received message: %s\n", string(msg.Value))
 
 			// Modify the message and produce it back to Kafka
-			newMessage := kafka.Message{
-				Key:   []byte("modified-key"),
-				Value: []byte("Modified: " + string(msg.Value)),
-			}
+			// newMessage := kafka.Message{
+			// 	Key:   []byte("modified-key"),
+			// 	Value: []byte("Modified: " + string(msg.Value)),
+			// }
 
-			err = writer.WriteMessages(context.Background(), newMessage)
-			if err != nil {
-				log.Fatal("Error writing message to Kafka:", err)
-			}
+			// err = writer.WriteMessages(context.Background(), newMessage)
+			// if err != nil {
+			// 	log.Fatal("Error writing message to Kafka:", err)
+			// }
 
 			fmt.Println("Message produced to Kafka")
 		}
