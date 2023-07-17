@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -28,6 +29,7 @@ func main() {
 	err := kafkaConnection.CreateTopics(topicConfig)
 	if err != nil {
 		fmt.Println("Error creating the topic %w", err)
+		return
 	}
 
 	readerConfig := kafka.ReaderConfig{
@@ -42,7 +44,7 @@ func main() {
 		Topic:   topic,
 	}
 
-	fmt.Println("Starting Kafka Consumer and Producer...")
+	log.Println("Starting Kafka Consumer and Producer...")
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
@@ -54,21 +56,38 @@ func main() {
 	defer reader.Close()
 	defer writer.Close()
 
+	type myCustomMessage struct {
+		Id    int    `json:"id"`
+		Value string `json:"value"`
+	}
+
+	customMessage := myCustomMessage{
+		Id:    1,
+		Value: "myValue",
+	}
+
+	byteCustomMessage, err := json.Marshal(customMessage)
+
+	if err != nil {
+		log.Fatal("Error on json marshal:", err)
+	}
+
 	// write a message
 	message := kafka.Message{
-		Key:   []byte("key"),
-		Value: []byte("value"),
+		Key:   []byte("my-key"),
+		Value: byteCustomMessage,
 	}
 
 	err = writer.WriteMessages(context.Background(), message)
 	if err != nil {
-		fmt.Println("Error writing message:", err)
+		log.Fatal("Error writing message:", err)
 	}
+
+	log.Println("Message produced to Kafka")
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 
-	// Start consuming and producing messages
 	for {
 		select {
 		case <-signals:
@@ -78,51 +97,28 @@ func main() {
 			// Read a message from Kafka
 			msg, err := reader.ReadMessage(context.Background())
 			if err != nil {
-				log.Fatal("Error reading message from Kafka:", err)
+				log.Printf("Error reading message: %v", err)
+				continue
 			}
 
-			// Process the message
-			fmt.Printf("Received message: %s\n", string(msg.Value))
+			log.Println("Received message")
+			log.Printf("key: %v", string(msg.Key))
 
-			// Modify the message and produce it back to Kafka
-			// newMessage := kafka.Message{
-			// 	Key:   []byte("modified-key"),
-			// 	Value: []byte("Modified: " + string(msg.Value)),
-			// }
+			var message myCustomMessage
 
-			// err = writer.WriteMessages(context.Background(), newMessage)
+			if err := json.Unmarshal(msg.Value, &message); err != nil {
+				log.Printf("Failed to unmarshal message: %v", err)
+				continue
+			}
+
+			// jsonData, err := json.Marshal(message)
 			// if err != nil {
-			// 	log.Fatal("Error writing message to Kafka:", err)
+			// 	log.Printf("Failed to marshal JSON: %v", err)
+			// 	continue
 			// }
 
-			fmt.Println("Message produced to Kafka")
+			log.Printf("value: %v", message)
 		}
 	}
-
-	// serverErrors := make(chan error, 1)
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-
-	// select {
-	// case err := <-serverErrors:
-
-	// 	fmt.Println("server error: %w", err)
-
-	// case sig := <-shutdown:
-	// 	fmt.Println("shutdown started with sig: %w", sig)
-
-	// 	// Give outstanding requests a deadline for completion.
-	// 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-	// 	ctx.Done()
-	// 	defer cancel()
-
-	// 	// Asking listener to shutdown and shed load
-	// 	// if err := api.Shutdown(ctx); err != nil {
-	// 	// 	return fmt.Errorf("could not stop server gracefully: %w", err)
-	// 	// }
-
-	// }
-
-	// return
 
 }
