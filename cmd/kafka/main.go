@@ -94,7 +94,7 @@ func main() {
 			fmt.Println("Termination signal received. Closing Kafka consumer and producer.")
 			return
 		default:
-			// Read a message from Kafka
+			// Read recent message from Kafka
 			msg, err := reader.ReadMessage(context.Background())
 			if err != nil {
 				log.Printf("Error reading message: %v", err)
@@ -110,12 +110,6 @@ func main() {
 				log.Printf("Failed to unmarshal message: %v", err)
 				continue
 			}
-
-			// jsonData, err := json.Marshal(message)
-			// if err != nil {
-			// 	log.Printf("Failed to marshal JSON: %v", err)
-			// 	continue
-			// }
 
 			log.Printf("value: %v", message)
 		}
